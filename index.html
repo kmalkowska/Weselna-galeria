@@ -199,6 +199,7 @@
       await loadPhotos();
     } catch (error) {
       statusBox.textContent = error.message;
+      alert(error.message);
     } finally {
       button.disabled = false;
     }
