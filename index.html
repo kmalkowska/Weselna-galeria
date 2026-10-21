@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Klaudia i Bartek — nasza galeria weselna</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, serif;
+      background: #fbf7f2;
+      color: #51443c;
+    }
+
+    header {
+      text-align: center;
+      padding: 45px 18px 30px;
+      background: #f0e5d9;
+    }
+
+    .heart { font-size: 28px; }
+
+    h1 {
+      font-size: clamp(30px, 7vw, 48px);
+      font-weight: normal;
+      margin: 12px 0;
+    }
+
+    header p {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 28px auto;
+      padding: 0 16px 40px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 18px #6b514410;
+    }
+
+    h2 { font-weight: normal; }
+
+    input, button {
+      width: 100%;
+      padding: 13px;
+      margin: 7px 0;
+      border-radius: 9px;
+      font-size: 16px;
+    }
+
+    input {
+      border: 1px solid #d8c9ba;
+      background: white;
+    }
+
+    button {
+      border: none;
+      background: #927461;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    .secondary {
+      background: #e9ded3;
+      color: #51443c;
+    }
+
+    #status {
+      white-space: pre-wrap;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .photos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .photos img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      background: #eee5dc;
+    }
+
+    .hidden { display: none; }
+
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #8b796b;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="heart">♡</div>
+  <h1>Klaudia &amp; Bartek</h1>
+  <p>24 października 2026</p>
+  <p>Nasze wspólne wspomnienia 🤍<br>
+  Dodaj swoje zdjęcia, abyśmy mogli zachować je na pamiątkę!</p>
+</header>
+
+<main>
+  <section class="card" id="loginCard">
+    <h2>Witaj na naszej galerii!</h2>
+    <p>Wpisz kod dostępu otrzymany od Pary Młodej.</p>
+    <form id="loginForm">
+      <input id="galleryCode" type="password"
+        placeholder="Kod dostępu" required autocomplete="off">
+      <button type="submit" id="loginButton">Wejdź do galerii ♡</button>
+    </form>
+  </section>
+
+  <section class="hidden" id="galleryArea">
+    <div class="card">
+      <h2>Podziel się zdjęciami 📸</h2>
+      <p>Wybierz zdjęcia z telefonu lub komputera.</p>
+      <input id="photoFiles" type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        multiple>
+      <button id="uploadButton">Dodaj wybrane zdjęcia</button>
+      <button class="secondary" id="refreshButton">Odśwież galerię</button>
+      <button class="secondary" id="logoutButton">Wyloguj</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="card">
+      <h2>Nasze wspólne zdjęcia 🤍</h2>
+      <div class="photos" id="photos"></div>
+    </div>
+  </section>
+</main>
+
+<footer>Z miłością — Klaudia &amp; Bartek ♡</footer>
+
+<script type="module">
+  // Adres Waszej funkcji Supabase
+  const FUNCTION_URL =
+    "https://crjlzxqkjghtneqgbhwa.supabase.co/functions/v1/Weselna-galeria";
+
+  const loginCard = document.getElementById("loginCard");
+  const galleryArea = document.getElementById("galleryArea");
+  const statusBox = document.getElementById("status");
+  const photosBox = document.getElementById("photos");
+  const uploadButton = document.getElementById("uploadButton");
+
+  let sessionToken = "";
+
+  async function callFunction(data) {
+    const response = await fetch(FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, token: sessionToken })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Wystąpił błąd.");
+    }
+
+    return result;
+  }
+
+  document.getElementById("loginForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const button = document.getElementById("loginButton");
+    button.disabled = true;
+    statusBox.textContent = "";
+
+    try {
+      const result = await callFunction({
+        action: "login",
+        code: document.getElementById("galleryCode").value
+      });
+
+      sessionToken = result.token;
+      loginCard.classList.add("hidden");
+      galleryArea.classList.remove("hidden");
+      await loadPhotos();
+    } catch (error) {
+      statusBox.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  async function loadPhotos() {
+    statusBox.textContent = "Ładowanie zdjęć…";
+    photosBox.replaceChildren();
+
+    try {
+      const result = await callFunction({ action: "list" });
+
+      for (const photo of result.photos || []) {
+        if (!photo.url) continue;
+
+        const image = document.createElement("img");
+        image.src = photo.url;
+        image.alt = "Zdjęcie weselne";
+        image.loading = "lazy";
+        photosBox.appendChild(image);
+      }
+
+      statusBox.textContent = result.photos?.length
+        ? "Zdjęcia zostały załadowane."
+        : "Galeria jest jeszcze pusta. Dodaj pierwsze zdjęcia!";
+
+    } catch (error) {
+      statusBox.textContent = error.message;
+    }
+  }
+
+  document.getElementById("uploadButton").addEventListener("click", async () => {
+    const files = document.getElementById("photoFiles").files;
+
+    if (!files.length) {
+      statusBox.textContent = "Najpierw wybierz zdjęcia.";
+      return;
+    }
+
+    uploadButton.disabled = true;
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        if (file.size > 50 * 1024 * 1024) {
+          throw new Error("Plik " + file.name + " przekracza 50 MB.");
+        }
+
+        statusBox.textContent =
+          `Przesyłanie zdjęcia ${i + 1} z ${files.length}…`;
+
+        const upload = await callFunction({
+          action: "upload-url",
+          name: file.name
+        });
+
+        const uploadResponse = await fetch(
+          "https://crjlzxqkjghtneqgbhwa.supabase.co/storage/v1/object/upload/sign/" +
+          encodeURIComponent("Klaudia i Bartek 24.10.2026") + "/" +
+          upload.path.split("/").map(encodeURIComponent).join("/") +
+          "?token=" + encodeURIComponent(upload.token),
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": file.type || "application/octet-stream",
+              "x-upsert": "false"
+            },
+            body: file
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          throw new Error("Nie udało się przesłać zdjęcia. Spróbuj ponownie.");
+        }
+      }
+
+      document.getElementById("photoFiles").value = "";
+      statusBox.textContent = "Gotowe! Zdjęcia zostały dodane. ❤️";
+      await loadPhotos();
+
+    } catch (error) {
+      statusBox.textContent = error.message;
+    } finally {
+      uploadButton.disabled = false;
+    }
+  });
+
+  document.getElementById("refreshButton").addEventListener("click", loadPhotos);
+
+  document.getElementById("logoutButton").addEventListener("click", () => {
+    sessionToken = "";
+    photosBox.replaceChildren();
+    galleryArea.classList.add("hidden");
+    loginCard.classList.remove("hidden");
+    document.getElementById("galleryCode").value = "";
+    statusBox.textContent = "";
+  });
+</script>
+
+</body>
+</html>
