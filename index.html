@@ -214,15 +214,61 @@
     try {
       const result = await callFunction({ action: "list" });
 
-      for (const photo of result.photos || []) {
-        if (!photo.url) continue;
+for (const photo of result.photos || []) {
 
-        const image = document.createElement("img");
-        image.src = photo.url;
-        image.alt = "Zdjęcie weselne";
-        image.loading = "lazy";
-        photosBox.appendChild(image);
-      }
+  if (!photo.url) continue;
+
+
+
+  const item = document.createElement("div");
+
+  item.style.textAlign = "center";
+
+
+
+  const image = document.createElement("img");
+
+  image.src = photo.url;
+
+  image.alt = "Zdjęcie weselne";
+
+  image.loading = "lazy";
+
+  image.style.cursor = "pointer";
+
+
+
+  image.addEventListener("click", () => {
+
+    window.open(photo.url, "_blank", "noopener");
+
+  });
+
+
+
+  const download = document.createElement("a");
+
+  download.href = photo.url;
+
+  download.download = "zdjecie-weselne";
+
+  download.textContent = "Pobierz zdjęcie ↓";
+
+  download.style.display = "block";
+
+  download.style.margin = "8px 0 16px";
+
+  download.style.color = "#927461";
+
+
+
+  item.appendChild(image);
+
+  item.appendChild(download);
+
+  photosBox.appendChild(item);
+
+}
 
       statusBox.textContent = result.photos?.length
         ? "Zdjęcia zostały załadowane."
