@@ -155,6 +155,7 @@
   // Adres Waszej funkcji Supabase
   const FUNCTION_URL =
     "https://crjlzxqkjghtneqgbhwa.supabase.co/functions/v1/Weselna-galeria";
+  const SUPABASE_PUBLIC_KEY = "sb_publishable_OG4yK6OhVfGKd0QZep23og_Ig0JsPni";
 
   const loginCard = document.getElementById("loginCard");
   const galleryArea = document.getElementById("galleryArea");
@@ -167,7 +168,8 @@
   async function callFunction(data) {
     const response = await fetch(FUNCTION_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+               "apikey": SUPABASE_PUBLIC_KEY },
       body: JSON.stringify({ ...data, token: sessionToken })
     });
 
